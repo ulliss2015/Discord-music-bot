@@ -31,6 +31,10 @@ To run the bot, execute the following command:
 ```bash
 python bot.py
 ```
+or
+```bash
+start bot.bat
+```
 
 ## Bot Commands
 
