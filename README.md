@@ -1,4 +1,6 @@
-# Discord Music Bot 
+<!-- # Discord Music Bot --> 
+
+<h1 align="center">Discord Music Bot</h1>
 
 <p align="center">
   <img src="bot_logo.png" alt="Discord Music Bot Logo" width="200" height="200"
