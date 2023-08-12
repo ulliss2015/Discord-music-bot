@@ -1,3 +1,3 @@
 call .venv\Scripts\activate
-python "bot main.py"
+python "bot_main.py"
 
