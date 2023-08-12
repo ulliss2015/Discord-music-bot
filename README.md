@@ -1,7 +1,7 @@
-# Discord Music Bot
+# Discord Music Bot 
 
 <p align="center">
-  <img src="bot_logo.png" alt="Discord Music Bot Logo" width="100" height="100" style="border-radius: 50%;">
+  <img src="bot_logo.png" alt="Discord Music Bot Logo" width="200" height="200"
 </p>
 
 ## Overview
