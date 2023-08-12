@@ -31,7 +31,7 @@ To operate the bot, you'll need a Discord Bot token. Follow these steps:
 To run the bot, execute the following command:
 
 ```bash
-python_bot.py
+python bot_main.py
 ```
 or
 ```bash
