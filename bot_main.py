@@ -122,5 +122,5 @@ async def play_next_song(ctx):
         current_song = None
         await ctx.send('No more songs in the queue')
 
-
-bot.run(key)
+if __name__ == "__main__" :
+    bot.run(key)
