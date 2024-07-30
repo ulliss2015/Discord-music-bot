@@ -44,7 +44,8 @@ async def play(ctx, *, query):
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
-		'netrc': True,
+        'netrc': True,
+        'verbose': True,  # Включение вывода отладочных сообщений
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -125,5 +126,6 @@ async def play_next_song(ctx):
         current_song = None
         await ctx.send('No more songs in the queue')
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     bot.run(key)
+
