@@ -42,6 +42,7 @@ async def play(ctx, *, query):
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
+		"netrc": True,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
