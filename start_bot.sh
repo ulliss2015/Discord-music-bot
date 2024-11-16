@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Имя сессии tmux (можно изменить на ваше предпочтение)
+# tmux session name 
 SESSION_NAME="discord-music-bot"
 
 # Путь к файлу 
 BOT_PATH="source .venv/bin/activate && python3 bot_main.py"
 
-# Название окна tmux (можно изменить на ваше предпочтение)
+# tmux window name
 WINDOW_NAME="discord-music-bot"
 
-# Проверяем, существует ли сессия tmux
+# check if session exists
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-	# Если сессия не существует, создаем ее
-	tmux new-session -d -s "$SESSION_NAME" -n "$WINDOW_NAME"
+	# if it doesn't exist create it
+	tmux new-session -d -s "$SESSION_NAME" -n "$WINDOW_NAME" bash
 fi
 
-# Переходим в сессию и окно tmux
+# go to session and window tmux	
 tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME" "$BOT_PATH" C-m
 
-# Переключаемся в сессию tmux
+# attach to session
 # tmux attach-session -t "$SESSION_NAME"
 
