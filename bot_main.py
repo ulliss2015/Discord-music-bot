@@ -65,10 +65,14 @@ async def play(ctx, *, query):
         await voice_channel.connect()
 
     ydl_opts = {
-        "format": "bestaudio/best",
-        "noplaylist": True,
-        "verbose": True,
+        'format': 'bestaudio/best',
+        'noplaylist': True,
+        'netrc': True,
+        'verbose': True,
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'cookiefile': 'cookies.txt',
     }
+
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
