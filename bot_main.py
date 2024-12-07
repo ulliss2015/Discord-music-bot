@@ -51,7 +51,6 @@ async def on_ready():
     bot_logger.info("Bot is ready")
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="Music"))
 
-
 @bot.command(name="play")
 async def play(ctx, *, query):
     bot_logger.info(f"Play command invoked by {ctx.author.name} with query: {query}")
