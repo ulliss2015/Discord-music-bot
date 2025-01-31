@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
+# Discord Music Bot with Auto-Disconnect and Channel Management
 
 import yt_dlp
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import Button, View
 import logging
 import os
 import asyncio
+from datetime import datetime, timedelta
 
-# -------------------------------------------
-# LOGGING SETUP
+# ---------------------------
+# LOGGING CONFIGURATION
+# ---------------------------
 logdir = os.getenv("LOGDIR", "./logs")
 os.makedirs(logdir, exist_ok=True)
 log_file_path = os.path.join(logdir, "DISCORD.MUSIC.log")
@@ -26,32 +29,39 @@ logging.basicConfig(
 bot_logger = logging.getLogger("bot")
 discord_logger = logging.getLogger("discord")
 discord_logger.setLevel(logging.DEBUG)
-# -------------------------------------------
-# TOKEN LOADING
+
+# ---------------------------
+# BOT CONFIGURATION
+# ---------------------------
 script_directory = os.path.dirname(os.path.abspath(__file__))
 token_file_path = os.path.join(script_directory, "token.txt")
 
 with open(token_file_path, "r") as file:
     key = file.read().strip()
-# -------------------------------------------
-# BOT SETUP
+
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# -------------------------------------------
-# GLOBAL STATE
-song_queue = []
-current_song = None
-is_paused = False
+# ---------------------------
+# GLOBAL STATE MANAGEMENT
+# ---------------------------
+song_queue = []  # Stores queued songs as (url, title) tuples
+current_song = None  # Currently playing song (url, title)
+is_paused = False  # Playback pause state
+last_activity = datetime.now()  # Track last user interaction
+AUTO_DISCONNECT_MINUTES = 5  # Auto-disconnect timeout
 
+# ---------------------------
+# MUSIC CONTROL VIEW (BUTTONS)
+# ---------------------------
 class MusicControlView(View):
     def __init__(self):
         super().__init__(timeout=None)
         
-        # Stylish buttons with labels
+        # Create control buttons with styles and labels
         self.play_pause_button = Button(
             style=discord.ButtonStyle.blurple,
             emoji="⏯",
@@ -68,67 +78,91 @@ class MusicControlView(View):
             label="Stop"
         )
 
-        # Set callbacks
+        # Assign button click handlers
         self.play_pause_button.callback = self.play_pause_handler
         self.next_button.callback = self.next_handler
         self.stop_button.callback = self.stop_handler
 
-        # Add buttons to view
+        # Add buttons to the view
         self.add_item(self.play_pause_button)
         self.add_item(self.next_button)
         self.add_item(self.stop_button)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.voice and interaction.user.voice.channel == interaction.guild.voice_client.channel
+        """Allow interactions from any channel"""
+        return True
 
     async def play_pause_handler(self, interaction: discord.Interaction):
+        """Toggle play/pause state"""
         global is_paused
         vc = interaction.guild.voice_client
         
-        if not vc.is_playing() and not vc.is_paused():
+        if not vc or not (vc.is_playing() or vc.is_paused()):
             return await interaction.response.send_message("Nothing is playing", ephemeral=True)
             
         if vc.is_paused():
             vc.resume()
             self.play_pause_button.style = discord.ButtonStyle.blurple
             is_paused = False
-            await interaction.response.edit_message(
-                content=f"▶️ Resumed: {current_song[1]}",
-                view=self
-            )
+            await interaction.response.edit_message(content=f"▶️ Resumed: {current_song[1]}", view=self)
         else:
             vc.pause()
             self.play_pause_button.style = discord.ButtonStyle.grey
             is_paused = True
-            await interaction.response.edit_message(
-                content=f"⏸ Paused: {current_song[1]}",
-                view=self
-            )
+            await interaction.response.edit_message(content=f"⏸ Paused: {current_song[1]}", view=self)
+        update_activity()
 
     async def next_handler(self, interaction: discord.Interaction):
+        """Skip to next track"""
         vc = interaction.guild.voice_client
-        if vc.is_playing() or vc.is_paused():
+        if vc and (vc.is_playing() or vc.is_paused()):
             vc.stop()
             await interaction.response.edit_message(content="⏭ Skipping...")
             await play_next_song(interaction=interaction)
         else:
             await interaction.response.send_message("Nothing to skip", ephemeral=True)
+        update_activity()
 
     async def stop_handler(self, interaction: discord.Interaction):
+        """Stop playback and disconnect"""
         vc = interaction.guild.voice_client
-        if vc.is_playing() or vc.is_paused():
-            vc.stop()
-            
-        await vc.disconnect()
-        await interaction.response.edit_message(
-            content="⏹ Playback stopped", 
-            view=None
-        )
-        self.stop()
+        if vc:
+            if vc.is_playing() or vc.is_paused():
+                vc.stop()
+            await vc.disconnect()
+            await interaction.response.edit_message(content="⏹ Playback stopped", view=None)
+            self.stop()
+        update_activity()
 
+# ---------------------------
+# BACKGROUND TASKS
+# ---------------------------
+@tasks.loop(minutes=1)
+async def check_empty_channels():
+    """Check for empty channels and disconnect when inactive"""
+    global last_activity
+    now = datetime.now()
+    
+    for guild in bot.guilds:
+        vc = guild.voice_client
+        if vc and vc.is_connected():
+            # Check human members in voice channel
+            members = [m for m in vc.channel.members if not m.bot]
+            
+            # Auto-disconnect conditions
+            if not members or (now - last_activity > timedelta(minutes=AUTO_DISCONNECT_MINUTES)):
+                await vc.disconnect()
+                song_queue.clear()
+                bot_logger.info(f"Auto-disconnected from {vc.channel.name}")
+
+# ---------------------------
+# BOT EVENT HANDLERS
+# ---------------------------
 @bot.event
 async def on_ready():
+    """Initialize bot when ready"""
     bot_logger.info("Bot is ready")
+    check_empty_channels.start()
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.listening,
@@ -136,34 +170,44 @@ async def on_ready():
         )
     )
 
+# ---------------------------
+# UTILITY FUNCTIONS
+# ---------------------------
+def update_activity():
+    """Update last activity timestamp"""
+    global last_activity
+    last_activity = datetime.now()
+
+# ---------------------------
+# BOT COMMANDS
+# ---------------------------
 @bot.command(name="play")
 async def play(ctx, *, query):
-    bot_logger.info(f"Play command by {ctx.author.name}: {query}")
-    
+    """Play music from YouTube (requires voice channel)"""
     if not ctx.author.voice:
         await ctx.send("🚫 You must be in a voice channel!")
         return
 
     voice_channel = ctx.author.voice.channel
 
+    # Connect to voice channel if not already connected
     if not ctx.voice_client:
         await voice_channel.connect()
 
+    # YouTube DL configuration
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
-        'no_warnings': True,
         'default_search': 'auto',
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'cookiefile': 'cookies.txt',
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(query, download=False)
 
-            if "entries" in info:
+            if "entries" in info:  # Playlist handling
                 entries = info["entries"]
                 playlist_title = info["title"]
                 playlist_songs = [(entry["url"], entry["title"]) for entry in entries]
@@ -178,7 +222,7 @@ async def play(ctx, *, query):
                 
                 if not ctx.voice_client.is_playing():
                     await play_next_song(ctx)
-            else:
+            else:  # Single track handling
                 url = info["url"]
                 title = info["title"]
                 source = await discord.FFmpegOpusAudio.from_probe(
@@ -211,6 +255,7 @@ async def play(ctx, *, query):
                         color=discord.Color.gold()
                     )
                     await ctx.send(embed=embed, view=view)
+        update_activity()
 
     except Exception as e:
         bot_logger.error(f"Error: {e}")
@@ -223,7 +268,8 @@ async def play(ctx, *, query):
 
 @bot.command(name="stop")
 async def stop(ctx):
-    bot_logger.info("Stop command invoked")
+    """Stop playback and clear queue"""
+    update_activity()
     if ctx.voice_client:
         if ctx.voice_client.is_playing():
             ctx.voice_client.stop()
@@ -237,7 +283,8 @@ async def stop(ctx):
 
 @bot.command(name="skip")
 async def skip(ctx):
-    bot_logger.info("Skip command invoked")
+    """Skip current track"""
+    update_activity()
     if ctx.voice_client and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
         embed = discord.Embed(
@@ -252,46 +299,9 @@ async def skip(ctx):
         )
         await ctx.send(embed=embed)
 
-@bot.command(name="pause")
-async def pause(ctx):
-    bot_logger.info("Pause command invoked")
-    if ctx.voice_client and ctx.voice_client.is_playing():
-        ctx.voice_client.pause()
-        embed = discord.Embed(
-            title="⏸ Paused",
-            description=current_song[1],
-            color=discord.Color.blue()
-        )
-        await ctx.send(embed=embed)
-    else:
-        embed = discord.Embed(
-            title="🚫 Nothing to Pause",
-            color=discord.Color.red()
-        )
-        await ctx.send(embed=embed)
-
-@bot.command(name="resume")
-async def resume(ctx):
-    bot_logger.info("Resume command invoked")
-    if ctx.voice_client and ctx.voice_client.is_paused():
-        ctx.voice_client.resume()
-        embed = discord.Embed(
-            title="▶️ Resumed",
-            description=current_song[1],
-            color=discord.Color.green()
-        )
-        await ctx.send(embed=embed)
-    else:
-        embed = discord.Embed(
-            title="🚫 Nothing to Resume",
-            color=discord.Color.red()
-        )
-        await ctx.send(embed=embed)
-
 @bot.command(name="list")
 async def list_command(ctx):
-    bot_logger.info("List command invoked")
-    
+    """Show current queue"""
     embed = discord.Embed(
         title="🎶 Music Queue",
         color=discord.Color.purple()
@@ -301,12 +311,6 @@ async def list_command(ctx):
         embed.add_field(
             name="Now Playing:",
             value=f"**{current_song[1]}**",
-            inline=False
-        )
-    else:
-        embed.add_field(
-            name="Now Playing:",
-            value="Nothing is playing",
             inline=False
         )
     
@@ -336,8 +340,13 @@ async def list_command(ctx):
     
     await ctx.send(embed=embed)
 
+# ---------------------------
+# MUSIC PLAYBACK HANDLER
+# ---------------------------
 async def play_next_song(ctx=None, interaction=None):
+    """Handle track transitions"""
     global current_song
+    update_activity()
     
     target = ctx if ctx else interaction
     
