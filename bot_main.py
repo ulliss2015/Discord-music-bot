@@ -196,7 +196,7 @@ async def play(ctx, *, query):
 
     # YouTube DL configuration
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'ba[abr<=320]',
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
