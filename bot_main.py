@@ -229,7 +229,7 @@ async def play(ctx, *, query):
                 title = info["title"]
                 source = await discord.FFmpegOpusAudio.from_probe(
                     url,
-                    before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                    before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -buffer_size 5MB",
                 )
                 
                 if ctx.voice_client.is_playing() or song_queue:
@@ -359,7 +359,7 @@ async def play_next_song(ctx=None, interaction=None):
         try:
             source = await discord.FFmpegOpusAudio.from_probe(
                 next_song_url,
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -buffer_size 1MB"
             )
             
             target.voice_client.play(
