@@ -3,11 +3,24 @@
 # tmux session name 
 SESSION_NAME="discord-music-bot"
 
-# Путь к файлу 
-BOT_PATH="source ~/Discord-music-bot/.venv/bin/activate && python3 ~/Discord-music-bot/bot_main.py"
+# File Path
+#BOT_PATH="source ~/Discord-music-bot/.venv/bin/activate && python3 ~/Discord-music-bot/bot_main.py"
+BOT_CMD="source $BOT_DIR/.venv/bin/activate && cd $BOT_DIR && python3 bot_main.py"
 
 # tmux window name
 WINDOW_NAME="discord-music-bot"
+BOT_DIR="$HOME/Discord-music-bot"
+COOKIES_SOURCE="$HOME/cookies.txt"
+COOKIES_DEST="$BOT_DIR/cookies.txt"
+
+# Checking Cookies source                                                                                               
+if [ -f "$COOKIES_SOURCE" ]; then                                                                                       
+    cp -f "$COOKIES_SOURCE" "$COOKIES_DEST"                                                                             
+    echo "File cookies.txt copied to $BOT_DIR/"                                                                         
+else                                                                                                                    
+    echo "Error: file $COOKIES_SOURCE not found!"                                                                       
+    exit 1                                                                                                              
+fi   
 
 # check if session exists
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
@@ -16,7 +29,10 @@ if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
 fi
 
 # go to session and window tmux 
-tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME" "$BOT_PATH" C-m
+#tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME" "$BOT_PATH" C-m
+tmux send-keys -t "$SESSION_NAME:$WINDOW_NAME" "$BOT_CMD" C-m
+
+echo “Done! Tmux session ‘$SESSION_NAME’ started.”
 
 # attach to session
 # tmux attach-session -t "$SESSION_NAME"
