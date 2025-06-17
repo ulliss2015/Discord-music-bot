@@ -3,15 +3,14 @@
 # tmux session name 
 SESSION_NAME="discord-music-bot"
 
-# File Path
-#BOT_PATH="source ~/Discord-music-bot/.venv/bin/activate && python3 ~/Discord-music-bot/bot_main.py"
-BOT_CMD="source $BOT_DIR/.venv/bin/activate && cd $BOT_DIR && python3 bot_main.py"
-
 # tmux window name
 WINDOW_NAME="discord-music-bot"
 BOT_DIR="$HOME/Discord-music-bot"
 COOKIES_SOURCE="$HOME/cookies.txt"
 COOKIES_DEST="$BOT_DIR/cookies.txt"
+
+# File path
+BOT_CMD="source $BOT_DIR/.venv/bin/activate && cd $BOT_DIR && python3 bot_main.py"
 
 # Checking Cookies source                                                                                               
 if [ -f "$COOKIES_SOURCE" ]; then                                                                                       
