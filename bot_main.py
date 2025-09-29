@@ -230,10 +230,10 @@ async def play(ctx, *, query):
             else:  # Single track handling
                 url = info["url"]
                 title = info["title"]
-                source = await discord.FFmpegOpusAudio.from_probe(
+                source = discord.FFmpegPCMAudio(
                     url,
                     before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 0",
-                    options="-vn -ac 2 -ar 48000 -f opus -b:a 128k"
+                    options="-vn"
                 )
                 
                 if ctx.voice_client.is_playing() or song_queue:
@@ -361,10 +361,10 @@ async def play_next_song(ctx=None, interaction=None):
         current_song = (next_song_url, next_song_title)
         
         try:
-            source = await discord.FFmpegOpusAudio.from_probe(
+            source = discord.FFmpegPCMAudio(
                 next_song_url,
                 before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 0",
-                options="-vn -ac 2 -ar 48000 -f opus -b:a 128k"
+                options="-vn"
             )
             
             target.voice_client.play(
