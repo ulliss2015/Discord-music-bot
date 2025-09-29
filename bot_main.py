@@ -196,13 +196,16 @@ async def play(ctx, *, query):
 
     # YouTube DL configuration
     ydl_opts = {
-        'format': 'ba[abr<=320]',
+        'format': 'bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio',
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
         'default_search': 'auto',
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'cookiefile': 'cookies.txt',
+        'prefer_ffmpeg': True,
+        'socket_timeout': 60,
+        'retries': 3,
     }
 
     try:
@@ -229,7 +232,8 @@ async def play(ctx, *, query):
                 title = info["title"]
                 source = await discord.FFmpegOpusAudio.from_probe(
                     url,
-                    before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                    before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 0",
+                    options="-vn -ac 2 -ar 48000 -f opus -b:a 128k"
                 )
                 
                 if ctx.voice_client.is_playing() or song_queue:
@@ -359,7 +363,8 @@ async def play_next_song(ctx=None, interaction=None):
         try:
             source = await discord.FFmpegOpusAudio.from_probe(
                 next_song_url,
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -probesize 10M -analyzeduration 0",
+                options="-vn -ac 2 -ar 48000 -f opus -b:a 128k"
             )
             
             target.voice_client.play(
